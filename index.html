@@ -97,11 +97,8 @@
       padding:10px 10px;
       outline:none;
     }
-    /* ✅ Fix: dropdown list option readability on white backgrounds */
-    option{
-      background:#ffffff;
-      color:#111111;
-    }
+    /* dropdown list option readability on white backgrounds */
+    option{ background:#ffffff; color:#111111; }
 
     input[type="range"]{width:100%}
     .hint{font-size:12px; color:var(--muted); line-height:1.45}
@@ -224,7 +221,7 @@
           <div class="field">
             <label>플레이어 수</label>
             <input type="number" id="playerCount" min="4" max="10" value="6" />
-            <div class="hint">6명 이하: 총 트릭=20 / 7명 이상: 총 트릭=40 (기본값)</div>
+            <div class="hint">6명 이하: 총 트릭=20 / 7명 이상: 총 트릭=40</div>
           </div>
           <div class="field">
             <label>최소 공약 (minBid)</label>
@@ -248,14 +245,14 @@
             <input type="checkbox" id="optDoubleOppBonus" checked />
             <div>
               <div style="font-size:13px">보너스: 여당이 절반 미만이면 야당 2배</div>
-              <div class="hint">기본 ON (네가 말한 룰 그대로)</div>
+              <div class="hint">기본 ON</div>
             </div>
           </div>
           <div class="switch" title="보너스 시 여당 실점도 함께 2배로 할지">
             <input type="checkbox" id="optAlsoDoublePenalty" />
             <div>
               <div style="font-size:13px">옵션: 보너스 시 여당 실점도 2배</div>
-              <div class="hint">해석이 갈릴 수 있어 옵션으로 둠 (기본 OFF)</div>
+              <div class="hint">기본 OFF</div>
             </div>
           </div>
         </div>
@@ -266,7 +263,7 @@
           <div class="hint">
             <div><b>점수 계산(요약)</b></div>
             <div>• 여당 승리: base = 여당트릭 + bid − 2·minBid → 주공 +2·base, 프렌즈(각) +1·base</div>
-            <div>• 야당 승리: short = bid − 여당트릭</div>
+            <div>• 야당 승리: short = bid − 여당트릭 → 야당 각자 +short(또는 보너스 시 +2·short)</div>
           </div>
           <button class="btn primary" id="btnStart">게임 시작</button>
         </div>
@@ -292,7 +289,7 @@
   <!-- GAME -->
   <section id="gameView" style="display:none">
     <div class="game">
-      <!-- 1) Round input (TOP) -->
+      <!-- 1) Round input -->
       <div class="card">
         <div class="hd">
           <div class="t">이번 라운드 입력</div>
@@ -367,15 +364,13 @@
           <div class="toast" id="gameToast"></div>
 
           <div class="footnote">
-            ✅ 분배 규칙(수정 반영): 여당 승리 시 <b>base = gov + bid − 2·minBid</b><br/>
-            - 주공: <b>+2·base</b><br/>
-            - 프렌즈(각각): <b>+1·base</b><br/>
-            (나눠갖는 방식이 아니라, 각자 “배수”로 받음)
+            ✅ 여당 승리: base = gov + bid − 2·minBid → 주공 +2·base, 프렌즈(각) +1·base<br/>
+            ✅ 야당 승리: short = bid − gov → <b>야당 플레이어 전원 각각 +short</b> (보너스면 각각 +2·short)
           </div>
         </div>
       </div>
 
-      <!-- 2) Score table (MIDDLE) -->
+      <!-- 2) Score table -->
       <div class="card">
         <div class="hd">
           <div class="t">점수 테이블 (상시)</div>
@@ -406,7 +401,7 @@
         </div>
       </div>
 
-      <!-- 3) Scoring rule panel (BOTTOM) -->
+      <!-- 3) Rule panel -->
       <div class="card">
         <div class="hd">
           <div class="t">스코어링 룰 / 요소</div>
@@ -417,7 +412,7 @@
         </div>
       </div>
 
-      <!-- Round history -->
+      <!-- History -->
       <div class="card">
         <div class="hd">
           <div class="t">라운드 기록</div>
@@ -467,26 +462,14 @@
       </div>
     </div>
   </section>
-
 </div>
 
 <script>
-/**
- * Mighty Scoring - Single file app
- *
- * 반영된 변경:
- * 1) 드롭다운 option 흰 배경에서 글씨 검정 (CSS option rule)
- * 2) 여당 승리 점수 분배:
- *    base = gov + bid - 2*minBid
- *    주공 = +2*base
- *    프렌즈(각) = +1*base
- */
-
-const STORAGE_KEY = "mighty_scoring_v3";
+const STORAGE_KEY = "mighty_scoring_v4";
 const $ = (id) => document.getElementById(id);
 
 const state = {
-  phase: "setup", // setup | game | final
+  phase: "setup",
   setup: {
     playerCount: 6,
     names: [],
@@ -506,7 +489,7 @@ const state = {
 
 const TRUMPS = ["스페이스","다이아","하트","클로버","노기루"];
 
-/* ---------------- Persistence ---------------- */
+/* persistence */
 function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 function load(){
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -516,13 +499,12 @@ function load(){
 }
 function clearAll(){ localStorage.removeItem(STORAGE_KEY); }
 
-/* ---------------- Helpers ---------------- */
+/* helpers */
 function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 function unique(arr){ return Array.from(new Set(arr)); }
 function formatDelta(v){
   if(v === 0) return "0";
-  const sign = v > 0 ? "+" : "";
-  return sign + v;
+  return (v > 0 ? "+" : "") + v;
 }
 function showToast(el, msg){
   el.textContent = msg;
@@ -532,7 +514,7 @@ function showToast(el, msg){
 function computeTotalTricks(pc){ return (pc <= 6) ? 20 : 40; }
 function computeMaxBid(pc){ return (pc <= 6) ? 20 : 40; }
 
-/* ---------------- Rule Panel ---------------- */
+/* rule panel */
 function ruleText(){
   const pc = state.setup.playerCount;
   const minBid = state.setup.minBid;
@@ -550,24 +532,23 @@ function ruleText(){
   return [
 `[라운드 입력]
 - 주공 1명 + 프렌즈 0~2명 (없음 가능)
-- 공약(무늬): 스페이스/다이아/하트/클로버/노기루
 - 비딩(bid): ${minBid} ~ ${maxBid}
 - 야당 트릭 입력 → 여당 트릭 = ${totalTricks} - 야당 트릭
 
 [승리 판정]
-- 여당 승리: 여당 트릭(gov) >= bid
+- 여당 승리: gov >= bid
 - 야당 승리: gov < bid (short = bid - gov)
 
-[여당 승리 점수(수정)]
+[여당 승리]
 - base = gov + bid - 2·minBid
 - 주공: +2·base
 - 프렌즈(각): +1·base
 
-[야당 승리 점수]
+[야당 승리]
 - short = bid - gov
 - 야당 득점 = short
 ${bonusLine}
-- 야당 득점 분배: 야당 플레이어 균등 분배
+- ✅ 야당 분배: 야당 플레이어 전원 각각 +야당득점 (균등분배 아님)
 
 [여당 실점(야당 승리 시)]
 - 주공: -2·short
@@ -578,7 +559,7 @@ ${penOpt}
   ].join("\n");
 }
 
-/* ---------------- Setup UI ---------------- */
+/* setup UI */
 function renderNames(){
   const wrap = $("namesWrap");
   wrap.innerHTML = "";
@@ -598,8 +579,7 @@ function renderNames(){
       <label>Player ${i+1}</label>
       <input type="text" data-idx="${i}" value="${state.setup.names[i] ?? `P${i+1}`}" />
     `;
-    const inp = div.querySelector("input");
-    inp.addEventListener("input", (e)=>{
+    div.querySelector("input").addEventListener("input", (e)=>{
       const idx = Number(e.target.dataset.idx);
       state.setup.names[idx] = e.target.value;
       save();
@@ -624,7 +604,7 @@ function setupRecompute(){
   save();
 }
 
-/* ---------------- Game UI ---------------- */
+/* game UI */
 function fillSelect(sel, names){
   sel.innerHTML = "";
   names.forEach((n,i)=>{
@@ -656,9 +636,7 @@ function friendsOptions(declarerIdx){
   const pc = state.setup.playerCount;
   const names = state.setup.names;
   const allowed = [];
-  for(let i=0;i<pc;i++){
-    if(i !== declarerIdx) allowed.push(i);
-  }
+  for(let i=0;i<pc;i++) if(i !== declarerIdx) allowed.push(i);
   return allowed.map(i=>({i, name:names[i]}));
 }
 
@@ -668,7 +646,6 @@ function renderFriendSelects(){
 
   function setOptions(sel){
     sel.innerHTML = "";
-
     const none = document.createElement("option");
     none.value = "none";
     none.textContent = "없음";
@@ -684,11 +661,8 @@ function renderFriendSelects(){
 
   setOptions($("friend1"));
   setOptions($("friend2"));
-
   $("friend1").value = "none";
   $("friend2").value = "none";
-
-  $("friendsHint").textContent = "프렌즈는 0~2명까지 가능. (없음 선택 가능, 주공/중복 불가)";
 }
 
 function renderScoreTable(){
@@ -715,44 +689,32 @@ function renderHistory(){
   const box = $("historyBox");
   const h = state.game.history;
   $("historyBadge").textContent = `${h.length} rounds`;
-  if(!h.length){
-    box.textContent = "아직 라운드가 없습니다.";
-    return;
-  }
-  const lines = h.map(r=>{
-    const gov = r.govTricks;
-    const opp = r.oppTricks;
-    const res = r.outcome;
-    const trump = r.trump;
-    const bid = r.bid;
+  if(!h.length){ box.textContent = "아직 라운드가 없습니다."; return; }
+
+  box.textContent = h.map(r=>{
     const dec = state.setup.names[r.declarer];
     const fr = r.friends.length ? r.friends.map(i=>state.setup.names[i]).join(", ") : "(없음)";
-    return `R${r.round} | ${res} | 주공:${dec} | 프렌즈:${fr} | ${trump} ${bid} | 야당트릭:${opp} (여당:${gov})`;
-  });
-  box.textContent = lines.join("\n");
+    return `R${r.round} | ${r.outcome} | 주공:${dec} | 프렌즈:${fr} | ${r.trump} ${r.bid} | 야당트릭:${r.oppTricks} (여당:${r.govTricks})`;
+  }).join("\n");
 }
 
-/* ---------------- Scoring ---------------- */
+/* scoring */
 function computeRoundDelta(input){
   const pc = state.setup.playerCount;
   const totalTricks = state.game.totalTricks;
   const minBid = state.setup.minBid;
 
   const declarer = input.declarer;
-  const friends = input.friends;
   const bid = input.bid;
   const oppTricks = input.oppTricks;
   const govTricks = clamp(totalTricks - oppTricks, 0, totalTricks);
 
-  // validate friends: integers, in range, not declarer, up to 2 unique
-  const f = friends.filter(x => Number.isInteger(x) && x>=0 && x<pc && x!==declarer);
+  const f = (input.friends || []).filter(x => Number.isInteger(x) && x>=0 && x<pc && x!==declarer);
   const funiq = unique(f).slice(0, 2);
 
   const govTeam = [declarer, ...funiq];
   const oppTeam = [];
-  for(let i=0;i<pc;i++){
-    if(!govTeam.includes(i)) oppTeam.push(i);
-  }
+  for(let i=0;i<pc;i++) if(!govTeam.includes(i)) oppTeam.push(i);
 
   const delta = new Array(pc).fill(0);
   let outcome = "";
@@ -760,8 +722,6 @@ function computeRoundDelta(input){
 
   if(govTricks >= bid){
     outcome = "여당 승리";
-
-    // ✅ corrected: base score then multipliers (not splitting)
     const base = govTricks + bid - 2*minBid;
 
     delta[declarer] += 2 * base;
@@ -769,25 +729,17 @@ function computeRoundDelta(input){
 
     details.push(`여당 트릭(gov)=${govTricks} ≥ bid=${bid}`);
     details.push(`base = gov + bid - 2·minBid = ${govTricks} + ${bid} - 2·${minBid} = ${base}`);
-    details.push(`분배: 주공 +2·base = ${2*base}, 프렌즈(각) +1·base = ${base}`);
+    details.push(`주공 +2·base = ${2*base}, 프렌즈(각) +1·base = ${base}`);
   } else {
     outcome = "야당 승리";
     const short = bid - govTricks;
 
-    let oppGain = short;
     const bonus = state.setup.optDoubleOppBonus && (govTricks < totalTricks/2);
-    if(bonus) oppGain = 2*oppGain;
+    const oppGain = bonus ? 2*short : short;
 
-    // distribute opp gain equally as integers
-    const baseOpp = (oppTeam.length > 0) ? Math.floor(oppGain / oppTeam.length) : 0;
-    let rem = (oppTeam.length > 0) ? (oppGain - baseOpp * oppTeam.length) : 0;
+    // ✅ changed: each opposition player gets full oppGain (NOT split)
+    oppTeam.forEach(idx => { delta[idx] += oppGain; });
 
-    oppTeam.forEach((idx)=>{
-      delta[idx] += baseOpp;
-      if(rem > 0){ delta[idx] += 1; rem -= 1; }
-    });
-
-    // penalties
     let penFactor = 1;
     if(bonus && state.setup.optAlsoDoublePenalty) penFactor = 2;
 
@@ -795,20 +747,12 @@ function computeRoundDelta(input){
     funiq.forEach(idx => delta[idx] -= (1 * short * penFactor));
 
     details.push(`여당 트릭(gov)=${govTricks} < bid=${bid} → short=${short}`);
-    details.push(`야당 득점 = ${bonus ? "2×" : ""}${short} = ${oppGain} (야당 인원 균등 분배)`);
+    details.push(`야당 득점 = ${bonus ? "2×" : ""}${short} = ${oppGain}`);
+    details.push(`✅ 야당 전원 각각 +${oppGain} (균등분배 아님)`);
     details.push(`여당 실점: 주공 -2·short${penFactor===2?"(×2옵션)":""}, 프렌즈 -1·short${penFactor===2?"(×2옵션)":""}`);
   }
 
-  return {
-    delta,
-    outcome,
-    govTricks,
-    oppTricks,
-    friends: funiq,
-    oppTeam,
-    govTeam,
-    details
-  };
+  return { delta, outcome, govTricks, oppTricks, friends: funiq, oppTeam, govTeam, details };
 }
 
 function currentInput(){
@@ -816,12 +760,9 @@ function currentInput(){
   const bid = Number($("bidRange").value);
   const oppTricks = Number($("oppTricks").value);
 
-  const f1v = $("friend1").value;
-  const f2v = $("friend2").value;
-
   const friends = [];
-  if(f1v !== "none") friends.push(Number(f1v));
-  if(f2v !== "none") friends.push(Number(f2v));
+  if($("friend1").value !== "none") friends.push(Number($("friend1").value));
+  if($("friend2").value !== "none") friends.push(Number($("friend2").value));
 
   return { declarer, trump: state.ui.trump, bid, oppTricks, friends };
 }
@@ -835,7 +776,6 @@ function updatePreview(){
   $("kpiTotalTricks").textContent = String(totalTricks);
   $("kpiMinBid").textContent = String(minBid);
 
-  // bid slider bounds
   const bidRange = $("bidRange");
   bidRange.min = String(minBid);
   bidRange.max = String(maxBid);
@@ -845,7 +785,6 @@ function updatePreview(){
   $("bidVal").textContent = bidRange.value;
   $("maxBidLabel").textContent = String(maxBid);
 
-  // opp tricks bounds
   const oppInp = $("oppTricks");
   oppInp.max = String(totalTricks);
   oppInp.min = "0";
@@ -854,15 +793,11 @@ function updatePreview(){
   const inp = currentInput();
   const res = computeRoundDelta(inp);
 
-  // outcome badge
   const live = $("liveOutcome");
   live.textContent = res.outcome;
   live.style.borderColor = res.outcome.includes("여당") ? "rgba(52,211,153,.45)" : "rgba(251,113,133,.45)";
   live.style.background = res.outcome.includes("여당") ? "rgba(52,211,153,.10)" : "rgba(251,113,133,.10)";
 
-  // preview box
-  const gov = res.govTricks;
-  const opp = res.oppTricks;
   const govNames = res.govTeam.map(i=>state.setup.names[i]).join(", ");
   const oppNames = res.oppTeam.map(i=>state.setup.names[i]).join(", ");
 
@@ -872,38 +807,29 @@ function updatePreview(){
 - 주공: ${state.setup.names[inp.declarer]}
 - 프렌즈: ${res.friends.length ? res.friends.map(i=>state.setup.names[i]).join(", ") : "(없음)"}
 - 공약: ${inp.trump} ${inp.bid}
-- 야당 트릭: ${opp}  → 여당 트릭: ${gov}
+- 야당 트릭: ${res.oppTricks}  → 여당 트릭: ${res.govTricks}
 
 [팀 구성]
 - 여당: ${govNames}
 - 야당: ${oppNames}`;
 
-  // delta box
   const lines = [];
   lines.push("[이번 라운드 점수 변화(미리보기)]");
-  res.delta.forEach((d,i)=>{
-    const nm = state.setup.names[i];
-    lines.push(`- ${nm}: ${formatDelta(d)}`);
-  });
+  res.delta.forEach((d,i)=> lines.push(`- ${state.setup.names[i]}: ${formatDelta(d)}`));
   lines.push("");
   lines.push("[계산 근거]");
-  res.details.forEach(s=>lines.push(`- ${s}`));
+  res.details.forEach(s=> lines.push(`- ${s}`));
   $("deltaBox").textContent = lines.join("\n");
 
   state.game.lastDelta = res.delta.slice();
   renderScoreTable();
-
   $("rulePanelGame").textContent = ruleText();
   save();
 }
 
 function initGameFromSetup(){
   const pc = state.setup.playerCount;
-  state.setup.names = state.setup.names.slice(0, pc).map((n,i)=>{
-    const t = (n||"").trim();
-    return t ? t : `P${i+1}`;
-  });
-
+  state.setup.names = state.setup.names.slice(0, pc).map((n,i)=> (n||"").trim() ? (n||"").trim() : `P${i+1}`);
   state.game.totalTricks = computeTotalTricks(pc);
   state.game.round = 1;
   state.game.totals = new Array(pc).fill(0);
@@ -921,59 +847,39 @@ function goPhase(phase){
   save();
 }
 
-/* ---------------- Events ---------------- */
+/* events */
 function wire(){
-  // Setup
-  $("playerCount").addEventListener("input", ()=>{
-    setupRecompute();
-    showToast($("setupToast"), "플레이어 수 업데이트");
-  });
-  $("minBid").addEventListener("input", ()=>{
-    setupRecompute();
-    showToast($("setupToast"), "최소 공약 업데이트");
-  });
+  $("playerCount").addEventListener("input", ()=>{ setupRecompute(); showToast($("setupToast"), "플레이어 수 업데이트"); });
+  $("minBid").addEventListener("input", ()=>{ setupRecompute(); showToast($("setupToast"), "최소 공약 업데이트"); });
   $("optDoubleOppBonus").addEventListener("change", setupRecompute);
   $("optAlsoDoublePenalty").addEventListener("change", setupRecompute);
 
   $("btnStart").addEventListener("click", ()=>{
     setupRecompute();
     initGameFromSetup();
-
     fillSelect($("declarerSel"), state.setup.names);
     renderTrumpPills();
-
     $("declarerSel").value = "0";
     renderFriendSelects();
-
     $("roundBadge").textContent = `Round ${state.game.round}`;
     $("kpiTotalTricks").textContent = String(state.game.totalTricks);
     $("kpiMinBid").textContent = String(state.setup.minBid);
     $("rulePanelGame").textContent = ruleText();
     $("rulePanelFinal").textContent = ruleText();
-
     renderScoreTable();
     renderHistory();
     updatePreview();
-
     goPhase("game");
   });
 
-  // Game inputs
-  $("declarerSel").addEventListener("change", ()=>{
-    renderFriendSelects();
-    updatePreview();
-  });
+  $("declarerSel").addEventListener("change", ()=>{ renderFriendSelects(); updatePreview(); });
 
   $("friend1").addEventListener("change", ()=>{
-    if($("friend1").value !== "none" && $("friend1").value === $("friend2").value){
-      $("friend2").value = "none";
-    }
+    if($("friend1").value !== "none" && $("friend1").value === $("friend2").value) $("friend2").value = "none";
     updatePreview();
   });
   $("friend2").addEventListener("change", ()=>{
-    if($("friend2").value !== "none" && $("friend2").value === $("friend1").value){
-      $("friend1").value = "none";
-    }
+    if($("friend2").value !== "none" && $("friend2").value === $("friend1").value) $("friend1").value = "none";
     updatePreview();
   });
 
@@ -984,9 +890,7 @@ function wire(){
     const inp = currentInput();
     const res = computeRoundDelta(inp);
 
-    for(let i=0;i<state.game.totals.length;i++){
-      state.game.totals[i] += res.delta[i];
-    }
+    for(let i=0;i<state.game.totals.length;i++) state.game.totals[i] += res.delta[i];
 
     state.game.history.push({
       round: state.game.round,
@@ -1007,21 +911,15 @@ function wire(){
     renderScoreTable();
     renderHistory();
     showToast($("gameToast"), "라운드 확정 완료");
-
     updatePreview();
     save();
   });
 
   $("btnUndo").addEventListener("click", ()=>{
     const h = state.game.history;
-    if(!h.length){
-      showToast($("gameToast"), "되돌릴 라운드가 없습니다.");
-      return;
-    }
+    if(!h.length){ showToast($("gameToast"), "되돌릴 라운드가 없습니다."); return; }
     const last = h.pop();
-    for(let i=0;i<state.game.totals.length;i++){
-      state.game.totals[i] -= last.delta[i];
-    }
+    for(let i=0;i<state.game.totals.length;i++) state.game.totals[i] -= last.delta[i];
     state.game.round = Math.max(1, state.game.round - 1);
     state.game.lastDelta = new Array(state.setup.playerCount).fill(0);
     $("roundBadge").textContent = `Round ${state.game.round}`;
@@ -1035,9 +933,7 @@ function wire(){
   $("btnEndGame").addEventListener("click", ()=>{
     const tbody = $("finalTable").querySelector("tbody");
     tbody.innerHTML = "";
-    const names = state.setup.names;
-    const totals = state.game.totals.slice();
-    const items = names.map((n,i)=>({n, i, s: totals[i]})).sort((a,b)=>b.s-a.s);
+    const items = state.setup.names.map((n,i)=>({n, s: state.game.totals[i]})).sort((a,b)=>b.s-a.s);
     items.forEach(it=>{
       const tr = document.createElement("tr");
       tr.innerHTML = `<td>${it.n}</td><td class="num">${it.s}</td>`;
@@ -1048,47 +944,29 @@ function wire(){
   });
 
   $("btnFinalBack").addEventListener("click", ()=> goPhase("game"));
-  $("btnFinalReset").addEventListener("click", ()=>{
-    clearAll();
-    location.reload();
-  });
+  $("btnFinalReset").addEventListener("click", ()=>{ clearAll(); location.reload(); });
 
-  $("btnBackToSetup").addEventListener("click", ()=>{
-    $("rulePanelSetup").textContent = ruleText();
-    goPhase("setup");
-  });
+  $("btnBackToSetup").addEventListener("click", ()=>{ $("rulePanelSetup").textContent = ruleText(); goPhase("setup"); });
 
-  // Export / Import
   $("btnExport").addEventListener("click", ()=>{
     const data = JSON.stringify(state, null, 2);
-    navigator.clipboard?.writeText(data).then(()=>{
-      alert("상태 JSON을 클립보드에 복사했어요.");
-    }).catch(()=>{
-      prompt("복사해서 저장하세요:", data);
-    });
+    navigator.clipboard?.writeText(data).then(()=> alert("상태 JSON을 클립보드에 복사했어요."))
+      .catch(()=> prompt("복사해서 저장하세요:", data));
   });
 
   $("btnImport").addEventListener("click", ()=>{
     const txt = prompt("붙여넣을 JSON을 입력하세요:");
     if(!txt) return;
-    try{
-      Object.assign(state, JSON.parse(txt));
-      save();
-      location.reload();
-    }catch(e){
-      alert("JSON 파싱 실패: 형식을 확인해 주세요.");
-    }
+    try{ Object.assign(state, JSON.parse(txt)); save(); location.reload(); }
+    catch(e){ alert("JSON 파싱 실패: 형식을 확인해 주세요."); }
   });
 
   $("btnResetAll").addEventListener("click", ()=>{
-    if(confirm("정말 초기화할까요? (저장된 진행도 삭제)")){
-      clearAll();
-      location.reload();
-    }
+    if(confirm("정말 초기화할까요? (저장된 진행도 삭제)")){ clearAll(); location.reload(); }
   });
 }
 
-/* ---------------- Init ---------------- */
+/* init */
 (function init(){
   const ok = load();
 
@@ -1106,13 +984,10 @@ function wire(){
     fillSelect($("declarerSel"), state.setup.names);
     renderTrumpPills();
     $("roundBadge").textContent = `Round ${state.game.round || 1}`;
-
     $("declarerSel").value = String(Number($("declarerSel").value || 0));
     renderFriendSelects();
-
     $("rulePanelGame").textContent = ruleText();
     $("rulePanelFinal").textContent = ruleText();
-
     renderScoreTable();
     renderHistory();
     updatePreview();
@@ -1120,7 +995,7 @@ function wire(){
     if(state.phase === "final"){
       const tbody = $("finalTable").querySelector("tbody");
       tbody.innerHTML = "";
-      const items = state.setup.names.map((n,i)=>({n, i, s: state.game.totals[i]})).sort((a,b)=>b.s-a.s);
+      const items = state.setup.names.map((n,i)=>({n, s: state.game.totals[i]})).sort((a,b)=>b.s-a.s);
       items.forEach(it=>{
         const tr = document.createElement("tr");
         tr.innerHTML = `<td>${it.n}</td><td class="num">${it.s}</td>`;
