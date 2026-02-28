@@ -32,6 +32,7 @@
     .title .sub{color:var(--muted); font-size:13px}
     .top-actions{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end}
     button, input, select{font:inherit;}
+
     .btn{
       border:1px solid var(--line);
       background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
@@ -96,6 +97,12 @@
       padding:10px 10px;
       outline:none;
     }
+    /* ✅ Fix: dropdown list option readability on white backgrounds */
+    option{
+      background:#ffffff;
+      color:#111111;
+    }
+
     input[type="range"]{width:100%}
     .hint{font-size:12px; color:var(--muted); line-height:1.45}
     .sep{height:1px; background:var(--line); margin:12px 0}
@@ -182,7 +189,6 @@
     .switch input{transform:scale(1.05)}
     .footnote{font-size:12px; color:var(--muted); margin-top:10px; line-height:1.45}
 
-    /* Game layout: single column in desired order */
     .game{
       display:grid;
       grid-template-columns: 1fr;
@@ -259,7 +265,7 @@
         <div class="row" style="justify-content:space-between">
           <div class="hint">
             <div><b>점수 계산(요약)</b></div>
-            <div>• 여당 승리: 팀점수 = 여당트릭 + bid − 2·minBid</div>
+            <div>• 여당 승리: base = 여당트릭 + bid − 2·minBid → 주공 +2·base, 프렌즈(각) +1·base</div>
             <div>• 야당 승리: short = bid − 여당트릭</div>
           </div>
           <button class="btn primary" id="btnStart">게임 시작</button>
@@ -361,8 +367,10 @@
           <div class="toast" id="gameToast"></div>
 
           <div class="footnote">
-            분배 규칙(가정): 여당 승리 시 팀 점수는 <b>주공 가중치 2</b>, 프렌즈는 각 <b>가중치 1</b>로 나눠 가짐.
-            야당 점수는 야당 플레이어에게 <b>균등 분배</b>.
+            ✅ 분배 규칙(수정 반영): 여당 승리 시 <b>base = gov + bid − 2·minBid</b><br/>
+            - 주공: <b>+2·base</b><br/>
+            - 프렌즈(각각): <b>+1·base</b><br/>
+            (나눠갖는 방식이 아니라, 각자 “배수”로 받음)
           </div>
         </div>
       </div>
@@ -466,24 +474,15 @@
 /**
  * Mighty Scoring - Single file app
  *
- * 반영된 UX 변경:
- * - 게임 화면 순서: (1) 입력 → (2) 점수 테이블 → (3) 룰 패널 → (4) 기록
- * - 프렌즈 선택: 항상 2칸 표시 + "없음" 옵션 추가 + 0~2명 가능
- *
- * Assumptions (explicit):
- * 1) 총 트릭(라운드) = (playerCount <= 6 ? 20 : 40)
- * 2) 여당 트릭 = totalTricks - oppositionTricks
- * 3) 여당 승리: govTricks >= bid
- *    - 여당 팀 점수 = govTricks + bid - 2*minBid
- *    - 분배: 주공 가중치 2, 프렌즈 각 1 (정수 배분)
- * 4) 야당 승리: short = bid - govTricks
- *    - 야당 득점 = short (or 2*short if bonus condition)
- *    - bonus condition: govTricks < totalTricks/2
- *    - 득점 분배: 야당 인원 균등(정수 배분)
- *    - 여당 실점: 주공 -2*short, 프렌즈 -1*short (bonus 시 실점 2배는 옵션)
+ * 반영된 변경:
+ * 1) 드롭다운 option 흰 배경에서 글씨 검정 (CSS option rule)
+ * 2) 여당 승리 점수 분배:
+ *    base = gov + bid - 2*minBid
+ *    주공 = +2*base
+ *    프렌즈(각) = +1*base
  */
 
-const STORAGE_KEY = "mighty_scoring_v2";
+const STORAGE_KEY = "mighty_scoring_v3";
 const $ = (id) => document.getElementById(id);
 
 const state = {
@@ -519,7 +518,6 @@ function clearAll(){ localStorage.removeItem(STORAGE_KEY); }
 
 /* ---------------- Helpers ---------------- */
 function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
-function sum(arr){ return arr.reduce((x,y)=>x+y,0); }
 function unique(arr){ return Array.from(new Set(arr)); }
 function formatDelta(v){
   if(v === 0) return "0";
@@ -533,37 +531,6 @@ function showToast(el, msg){
 }
 function computeTotalTricks(pc){ return (pc <= 6) ? 20 : 40; }
 function computeMaxBid(pc){ return (pc <= 6) ? 20 : 40; }
-
-/* integer proportional split that sums to total */
-function splitByWeights(total, indices, weights){
-  const wsum = sum(weights);
-  if(wsum <= 0) return new Array(indices.length).fill(0);
-
-  const raw = weights.map(w => (total * w) / wsum);
-  const floors = raw.map(x => Math.floor(x));
-  let remain = total - sum(floors);
-
-  const fracs = raw.map((x,i)=>({i, frac: x - floors[i]}))
-                   .sort((a,b)=> b.frac - a.frac);
-  const out = floors.slice();
-
-  let k = 0;
-  while(remain > 0 && fracs.length){
-    out[fracs[k].i] += 1;
-    remain -= 1;
-    k = (k + 1) % fracs.length;
-  }
-  while(remain < 0 && fracs.length){
-    const rev = fracs.slice().reverse();
-    let j = 0;
-    while(remain < 0){
-      out[rev[j].i] -= 1;
-      remain += 1;
-      j = (j+1) % rev.length;
-    }
-  }
-  return out;
-}
 
 /* ---------------- Rule Panel ---------------- */
 function ruleText(){
@@ -591,9 +558,10 @@ function ruleText(){
 - 여당 승리: 여당 트릭(gov) >= bid
 - 야당 승리: gov < bid (short = bid - gov)
 
-[여당 승리 점수]
-- 팀 점수 = gov + bid - 2·minBid
-- 분배(가정): 주공 가중치 2, 프렌즈 각 1로 비례 배분
+[여당 승리 점수(수정)]
+- base = gov + bid - 2·minBid
+- 주공: +2·base
+- 프렌즈(각): +1·base
 
 [야당 승리 점수]
 - short = bid - gov
@@ -717,7 +685,6 @@ function renderFriendSelects(){
   setOptions($("friend1"));
   setOptions($("friend2"));
 
-  // defaults: none / none
   $("friend1").value = "none";
   $("friend2").value = "none";
 
@@ -793,15 +760,16 @@ function computeRoundDelta(input){
 
   if(govTricks >= bid){
     outcome = "여당 승리";
-    const teamPts = govTricks + bid - 2*minBid;
 
-    const weights = govTeam.map(idx => (idx===declarer ? 2 : 1));
-    const splits = splitByWeights(teamPts, govTeam, weights);
-    govTeam.forEach((idx, j)=>{ delta[idx] += splits[j]; });
+    // ✅ corrected: base score then multipliers (not splitting)
+    const base = govTricks + bid - 2*minBid;
+
+    delta[declarer] += 2 * base;
+    funiq.forEach(idx => delta[idx] += 1 * base);
 
     details.push(`여당 트릭(gov)=${govTricks} ≥ bid=${bid}`);
-    details.push(`여당 팀점수 = gov + bid - 2·minBid = ${govTricks} + ${bid} - 2·${minBid} = ${teamPts}`);
-    details.push(`분배: 주공(×2), 프렌즈(×1) 비례`);
+    details.push(`base = gov + bid - 2·minBid = ${govTricks} + ${bid} - 2·${minBid} = ${base}`);
+    details.push(`분배: 주공 +2·base = ${2*base}, 프렌즈(각) +1·base = ${base}`);
   } else {
     outcome = "야당 승리";
     const short = bid - govTricks;
@@ -811,11 +779,11 @@ function computeRoundDelta(input){
     if(bonus) oppGain = 2*oppGain;
 
     // distribute opp gain equally as integers
-    const base = (oppTeam.length > 0) ? Math.floor(oppGain / oppTeam.length) : 0;
-    let rem = (oppTeam.length > 0) ? (oppGain - base * oppTeam.length) : 0;
+    const baseOpp = (oppTeam.length > 0) ? Math.floor(oppGain / oppTeam.length) : 0;
+    let rem = (oppTeam.length > 0) ? (oppGain - baseOpp * oppTeam.length) : 0;
 
     oppTeam.forEach((idx)=>{
-      delta[idx] += base;
+      delta[idx] += baseOpp;
       if(rem > 0){ delta[idx] += 1; rem -= 1; }
     });
 
@@ -925,7 +893,6 @@ function updatePreview(){
   state.game.lastDelta = res.delta.slice();
   renderScoreTable();
 
-  // keep rule panel synced with current totals/minBid/totalTricks
   $("rulePanelGame").textContent = ruleText();
   save();
 }
@@ -997,7 +964,6 @@ function wire(){
     updatePreview();
   });
 
-  // friends: prevent duplicates & declarer already excluded via options
   $("friend1").addEventListener("change", ()=>{
     if($("friend1").value !== "none" && $("friend1").value === $("friend2").value){
       $("friend2").value = "none";
@@ -1042,7 +1008,6 @@ function wire(){
     renderHistory();
     showToast($("gameToast"), "라운드 확정 완료");
 
-    // keep current inputs, just refresh preview
     updatePreview();
     save();
   });
@@ -1137,13 +1102,11 @@ function wire(){
 
   wire();
 
-  // Restore if previously in game/final
   if(ok && (state.phase === "game" || state.phase === "final") && state.setup?.names?.length){
     fillSelect($("declarerSel"), state.setup.names);
     renderTrumpPills();
     $("roundBadge").textContent = `Round ${state.game.round || 1}`;
 
-    // declarer default
     $("declarerSel").value = String(Number($("declarerSel").value || 0));
     renderFriendSelects();
 
